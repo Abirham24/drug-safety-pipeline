@@ -39,6 +39,7 @@ from fetch_openfda import (
     RAW_DIR,
     REQUEST_TIMEOUT,
     get_date_range,
+    mask_api_key,
 )
 
 # --- Configuration ----------------------------------------------------------
@@ -130,7 +131,8 @@ def fetch_drug_reactions(drug: str) -> list[dict] | None:
             continue
 
         if resp.status_code != 200:
-            print(f"    HTTP {resp.status_code}: {resp.text[:150]}")
+            # Mask defensively in case the error body ever echoes the request URL.
+            print(f"    HTTP {resp.status_code}: {mask_api_key(resp.text[:150])}")
             return None
 
         try:

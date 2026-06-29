@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -76,6 +77,16 @@ def build_params(extra: dict) -> dict:
     return params
 
 
+def mask_api_key(text: str) -> str:
+    """Return ``text`` with any ``api_key=<value>`` replaced by ``api_key=***``.
+
+    The key is still sent in the real request; we only scrub it from anything we
+    print/log (e.g. request URLs) so the secret never lands in console output or
+    logs. ``[^&\\s]+`` stops at the next query separator or whitespace.
+    """
+    return re.sub(r"(api_key=)[^&\s]+", r"\1***", text)
+
+
 def fetch(label: str, extra_params: dict) -> dict | None:
     """Perform one openFDA GET request and return the parsed JSON (or None on error).
 
@@ -93,7 +104,7 @@ def fetch(label: str, extra_params: dict) -> dict | None:
     # Always report what we asked for and the HTTP status.
     if resp.status_code != 200:
         print(
-            f"[{label}] ERROR: HTTP {resp.status_code} for URL:\n    {resp.url}\n"
+            f"[{label}] ERROR: HTTP {resp.status_code} for URL:\n    {mask_api_key(resp.url)}\n"
             f"    response: {resp.text[:300]}"
         )
         return None
@@ -101,11 +112,11 @@ def fetch(label: str, extra_params: dict) -> dict | None:
     try:
         payload = resp.json()
     except ValueError as exc:
-        print(f"[{label}] ERROR: could not parse JSON ({exc}) for URL:\n    {resp.url}")
+        print(f"[{label}] ERROR: could not parse JSON ({exc}) for URL:\n    {mask_api_key(resp.url)}")
         return None
 
     results = payload.get("results", [])
-    print(f"[{label}] OK: HTTP {resp.status_code}, {len(results)} results — {resp.url}")
+    print(f"[{label}] OK: HTTP {resp.status_code}, {len(results)} results — {mask_api_key(resp.url)}")
     return payload
 
 

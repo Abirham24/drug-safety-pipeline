@@ -10,3 +10,6 @@ duckdb
 # Stage 3 — transformations with dbt (DuckDB adapter)
 dbt-core
 dbt-duckdb
+
+# Stage 6 — orchestration
+prefect

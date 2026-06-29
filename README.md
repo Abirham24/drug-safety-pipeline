@@ -3,7 +3,8 @@
 A data engineering pipeline that ingests FDA drug adverse-event data, transforms it,
 detects safety signals, and runs on a schedule.
 
-> **Status:** Stage 0 — project skeleton only. No pipeline logic or API calls yet.
+> **Status:** Stage 6 — end-to-end pipeline (ingest → load → dbt transform/signals → tests)
+> wired into a single orchestrated Prefect flow.
 
 ## Project layout
 
@@ -39,6 +40,33 @@ detects safety signals, and runs on a schedule.
    ```
    pip install -r requirements.txt
    ```
+
+## Running the full pipeline (orchestration)
+
+The whole pipeline is wired into one Prefect flow so it runs with a single command:
+
+```
+python orchestration/pipeline_flow.py
+```
+
+The flow (`orchestration/pipeline_flow.py`) runs these existing steps **in strict order**,
+logging each task and stopping immediately if one fails:
+
+1. `ingest_counts` — `src/ingest/fetch_openfda.py` (drug/reaction counts + sample events)
+2. `ingest_pairs`  — `src/ingest/fetch_drug_reaction_pairs.py` (drug-reaction pairs)
+3. `load_duckdb`   — `src/load/load_to_duckdb.py` (raw JSON → DuckDB)
+4. `dbt_run`       — `dbt run` (staging + marts, from `dbt/` with `DBT_PROFILES_DIR` set)
+5. `dbt_test`      — `dbt test` (data-quality suite)
+
+**Why strictly sequential:** DuckDB allows only one writer at a time, and the load and dbt
+steps all write to `data/warehouse.duckdb`. The flow calls its tasks one after another (never
+concurrently), and each step runs as a subprocess that raises on a non-zero exit code — so a
+failed ingest **fails fast** and never proceeds to load/transform stale data.
+
+The flow is **manually triggered**; it resolves the project root from its own location, so it
+works regardless of the directory it's launched from. It could later be put on a schedule via
+a Prefect deployment (e.g. daily) without code changes — see the note at the bottom of
+`pipeline_flow.py`.
 
 ## Notes
 
