@@ -1,0 +1,22 @@
+# _sources.yml — declares the raw warehouse tables as dbt "sources".
+#
+# Sources are dbt's named handle on data that already exists in the warehouse
+# (loaded outside dbt — here by src/load/load_to_duckdb.py in Stage 2). Staging
+# models reference them with {{ source('raw', '<table>') }} instead of hardcoding
+# table names, so the dependency shows up in dbt's lineage graph and the raw
+# table names live in exactly one place.
+
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw openFDA tables loaded into DuckDB by the Stage 2 loader."
+    # DuckDB puts these tables in the default 'main' schema of the warehouse.
+    schema: main
+    tables:
+      - name: raw_counts_by_drug
+        description: "Adverse-event report counts per drug (term, count)."
+      - name: raw_counts_by_reaction
+        description: "Adverse-event report counts per reaction (term, count)."
+      - name: raw_sample_events
+        description: "Sample of detailed adverse-event records; full record kept as JSON."

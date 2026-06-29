@@ -1,0 +1,49 @@
+# _staging.yml — documentation and basic tests for the staging models.
+#
+# Each model and its columns get a short description (these show up in dbt docs),
+# and a few sensible not_null tests guard the key columns. Full testing is
+# Stage 5; these are just the obvious "this should never be null" checks.
+
+version: 2
+
+models:
+  - name: stg_drug_counts
+    description: "Cleaned per-drug adverse-event report counts (one row per drug)."
+    columns:
+      - name: drug_name
+        description: "Drug name, trimmed and uppercased for consistent keying."
+        data_tests:
+          - not_null
+      - name: report_count
+        description: "Number of adverse-event reports for the drug (integer)."
+        data_tests:
+          - not_null
+
+  - name: stg_reaction_counts
+    description: "Cleaned per-reaction adverse-event report counts (one row per reaction)."
+    columns:
+      - name: reaction
+        description: "Reaction (MedDRA preferred term), trimmed."
+        data_tests:
+          - not_null
+      - name: report_count
+        description: "Number of adverse-event reports for the reaction (integer)."
+        data_tests:
+          - not_null
+
+  - name: stg_events
+    description: "Cleaned top-level fields from the sample adverse-event records."
+    columns:
+      - name: safety_report_id
+        description: "openFDA safetyreportid — unique id of the adverse-event report."
+        data_tests:
+          - not_null
+          - unique
+      - name: received_date
+        description: "Date FDA received the report, parsed from YYYYMMDD into a DATE."
+      - name: is_serious
+        description: "True when the report is flagged serious (openFDA serious = '1')."
+      - name: reporter_country
+        description: "Primary source country code (e.g. US, GB) from the record JSON."
+      - name: patient_sex
+        description: "Patient sex decoded from patientsex code: Male / Female / Unknown."
