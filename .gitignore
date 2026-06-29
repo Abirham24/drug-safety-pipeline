@@ -1,0 +1,23 @@
+# Environment variables / secrets
+.env
+
+# Python virtual environments
+venv/
+.venv/
+
+# Python bytecode / caches
+__pycache__/
+*.pyc
+
+# Local data files (keep the folder, ignore its contents)
+data/*
+!data/.gitkeep
+
+# DuckDB / local database files
+*.duckdb
+*.db
+
+# dbt artifacts
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
