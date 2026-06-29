@@ -1,0 +1,43 @@
+# .dockerignore — keep these OUT of the build context / image.
+#
+# Why it matters:
+#   * NO SECRETS in the image — .env (the API key) is excluded and passed at
+#     runtime via env vars instead.
+#   * SMALLER, REPRODUCIBLE image — exclude the local virtualenv, caches, and
+#     build artifacts; dependencies are installed fresh from requirements.txt.
+#   * NO STALE LOCAL DATA — the warehouse and raw files are regenerated inside the
+#     container, so we never ship one developer's local data.
+
+# Secrets — supplied at runtime, never imaged
+.env
+
+# Python virtual environments (rebuilt via pip inside the image)
+venv/
+.venv/
+
+# Local data files and the DuckDB warehouse (regenerated at runtime)
+data/
+*.duckdb
+*.db
+
+# Version control
+.git/
+.gitignore
+
+# Python caches / bytecode
+__pycache__/
+*.pyc
+
+# dbt build artifacts and generated state
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
+# Local task specs / instructions (not part of the runnable project)
+pipeline_stage*_task.md
+
+# Docker files themselves don't need to be in the image
+Dockerfile
+.dockerignore
+docker-compose.yml

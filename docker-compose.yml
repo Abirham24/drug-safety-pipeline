@@ -1,0 +1,25 @@
+# docker-compose.yml — convenience wrapper to build and run the pipeline.
+#
+#   docker compose build      # build the image
+#   docker compose up         # run the pipeline once (ingest -> load -> dbt)
+#
+# This documents the intended runtime configuration: the image is built from the
+# local Dockerfile, and the openFDA API key is injected AT RUNTIME from a local
+# .env file (which is git-ignored AND docker-ignored — never committed or baked
+# into the image).
+
+services:
+  pipeline:
+    build: .
+    image: drug-safety-pipeline
+
+    # Supply the API key at runtime. `env_file` loads the local, uncommitted .env
+    # (containing OPENFDA_API_KEY=...). Equivalent explicit form:
+    #   environment:
+    #     - OPENFDA_API_KEY=${OPENFDA_API_KEY}
+    env_file:
+      - .env
+
+    # The pipeline is a one-shot batch job, not a long-running service: run to
+    # completion and do not restart.
+    restart: "no"

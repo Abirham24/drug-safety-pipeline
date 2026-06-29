@@ -68,6 +68,38 @@ works regardless of the directory it's launched from. It could later be put on a
 a Prefect deployment (e.g. daily) without code changes — see the note at the bottom of
 `pipeline_flow.py`.
 
+## Running with Docker
+
+The project is containerization-ready: a `Dockerfile`, `.dockerignore`, and
+`docker-compose.yml` are provided. The image installs the Python dependencies and
+runs the Prefect flow (`ingest → load → dbt run → dbt test`) as its default command.
+
+> **Honest status:** Docker is **not installed in the development environment**, so
+> the image has **not been built or run locally** — these files are provided and
+> reviewed but unbuilt. Build and run them on a machine with Docker. Nothing here
+> claims a container was deployed.
+
+Build and run:
+
+```
+docker build -t drug-safety-pipeline .
+docker run --env-file .env drug-safety-pipeline
+```
+
+Or with docker-compose:
+
+```
+docker compose build
+docker compose up
+```
+
+**Secrets:** the openFDA API key is supplied **at runtime** via `--env-file .env`
+(or compose's `env_file:`), and is **never baked into the image**. `.dockerignore`
+excludes `.env`, `venv/`, `data/`, `.git/`, caches, dbt artifacts, and the
+`*.duckdb` file — so no secrets and no stale local data enter the image, keeping it
+small and reproducible. Raw data and the DuckDB warehouse are regenerated inside the
+container when the flow runs.
+
 ## Notes
 
 - **openFDA API key is optional.** The openFDA API works without a key, but a free key

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from prefect import flow, get_run_logger, task
@@ -40,12 +41,18 @@ from prefect import flow, get_run_logger, task
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DBT_DIR = PROJECT_ROOT / "dbt"
 
-# Use the venv's own interpreter and dbt so the flow does not depend on whatever
-# python/dbt happen to be on PATH. (Windows: venv/Scripts, POSIX: venv/bin.)
+# Prefer the venv's own interpreter and dbt so a LOCAL run does not depend on
+# whatever python/dbt happen to be on PATH (Windows: venv/Scripts, POSIX:
+# venv/bin). But in a CONTAINER there is no venv — dependencies are installed
+# system-wide — so we fall back to the running interpreter (sys.executable) and a
+# PATH-resolved ``dbt``. This keeps the flow portable across local and Docker.
 _VENV_BIN = PROJECT_ROOT / "venv" / ("Scripts" if os.name == "nt" else "bin")
 _EXE = ".exe" if os.name == "nt" else ""
-VENV_PYTHON = _VENV_BIN / f"python{_EXE}"
-VENV_DBT = _VENV_BIN / f"dbt{_EXE}"
+
+_venv_python = _VENV_BIN / f"python{_EXE}"
+_venv_dbt = _VENV_BIN / f"dbt{_EXE}"
+VENV_PYTHON = str(_venv_python) if _venv_python.exists() else sys.executable
+VENV_DBT = str(_venv_dbt) if _venv_dbt.exists() else "dbt"
 
 
 def _run_step(label: str, cmd: list[str], cwd: Path, env: dict | None = None) -> str:
