@@ -1,0 +1,23 @@
+# profiles.yml — the connection/credentials file for dbt.
+#
+# WHAT THIS FILE DOES:
+#   It defines how dbt connects to a database. dbt_project.yml names a `profile`
+#   ("drug_safety"); dbt looks that name up here and uses the matching `outputs`
+#   target to open a connection. By default dbt looks for this file in ~/.dbt/,
+#   but we keep it INSIDE the repo so the project is self-contained, and point
+#   dbt at it via the DBT_PROFILES_DIR environment variable (see README).
+#
+# WHY IT IS SAFE TO COMMIT:
+#   DuckDB is a local file-based database — there is no host, user, or password.
+#   This file therefore contains NO secrets and is safe to commit.
+
+drug_safety:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Path to the warehouse file. It is relative to the directory dbt runs
+      # from (the `dbt/` project folder), so from a fresh clone this resolves to
+      # <repo>/data/warehouse.duckdb without any absolute paths.
+      path: "../data/warehouse.duckdb"
+      threads: 4

@@ -6,3 +6,7 @@ python-dotenv
 
 # Stage 2 — loading raw JSON into a local DuckDB warehouse
 duckdb
+
+# Stage 3 — transformations with dbt (DuckDB adapter)
+dbt-core
+dbt-duckdb

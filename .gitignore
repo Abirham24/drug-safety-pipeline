@@ -21,6 +21,8 @@ data/*
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+# dbt-generated anonymous usage id (not project code)
+dbt/.user.yml
 
 # Task spec files (local instructions, not part of the project)
 pipeline_stage*_task.md

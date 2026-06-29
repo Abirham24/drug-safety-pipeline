@@ -1,0 +1,37 @@
+# dbt_project.yml — the heart of a dbt project.
+#
+# WHAT THIS FILE DOES:
+#   It tells dbt the project's name, which connection profile to use (matched by
+#   name to an entry in profiles.yml), where to find models/seeds/etc., and the
+#   default materialization behaviour for each folder of models. dbt reads this
+#   file from the current working directory, so dbt commands are run from inside
+#   this `dbt/` folder.
+
+name: "drug_safety"
+version: "1.0.0"
+config-version: 2
+
+# Which profile (in profiles.yml) holds this project's warehouse connection.
+# Must match the top-level key in profiles.yml.
+profile: "drug_safety"
+
+# Standard dbt directory layout.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+# Build artifacts dbt generates (compiled SQL, run results). Git-ignored.
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Default materialization per folder. Staging models build as views for now;
+# real model design comes in Stage 3b.
+models:
+  drug_safety:
+    staging:
+      +materialized: view
