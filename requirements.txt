@@ -1,1 +1,5 @@
-# Python dependencies are added per stage. Empty for now (Stage 0).
+# Python dependencies are added per stage.
+
+# Stage 1 — ingestion from the openFDA API
+requests
+python-dotenv
