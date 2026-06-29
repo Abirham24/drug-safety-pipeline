@@ -54,3 +54,33 @@ You can confirm it landed with:
 dbt's build artifacts are git-ignored (see repo `.gitignore`): `dbt/target/`,
 `dbt/dbt_packages/`, `dbt/logs/`, and the generated `dbt/.user.yml`. The project
 source — `dbt_project.yml`, `profiles.yml`, and `models/` — is committed.
+
+## Data-quality testing strategy
+
+The pipeline validates its own data so it fails loudly when something is wrong,
+rather than silently serving bad numbers. `dbt test` runs the whole suite (and
+`dbt build` runs models + tests together). There are two kinds of tests:
+
+- **Generic tests** (declared inline in the `_sources.yml` / `_staging.yml` /
+  `_marts.yml` schema files) cover column-level rules: `not_null` on keys and
+  counts, `unique` on `stg_events.safety_report_id`, and `accepted_values` on the
+  boolean `is_signal`. These are dbt's built-ins — no external packages.
+
+- **Singular tests** (`.sql` files in `tests/`) cover business rules and
+  cross-table integrity. Each is a query that must return ZERO rows when the data
+  is valid:
+  - `assert_prr_non_negative` — PRR is a ratio of non-negative rates, never < 0.
+  - `assert_signals_meet_count_floor` — nothing is flagged `is_signal` with
+    `pair_count < 50` (the documented signal threshold).
+  - `assert_pair_count_positive` — every signal row has `pair_count >= 1`.
+  - `assert_staging_counts_non_negative` — all ingested counts are >= 0.
+  - `assert_no_orphan_pairs` — every drug in the pairs exists in `stg_drug_counts`
+    (catches join/key/cleaning mismatches).
+  - `assert_unique_drug_reaction_pairs` — each (drug, reaction) appears once in
+    the signal table (guards the pair grain).
+  - `assert_pairs_rowcount_plausible` — `stg_drug_reaction_pairs` has > 1000 rows,
+    so a silent empty/partial load is caught.
+
+We deliberately use singular SQL tests (instead of adding the `dbt_utils` package)
+for range/non-negativity checks, keeping the project dependency-free. All tests
+are expected to PASS on the current data — green means the data is valid.

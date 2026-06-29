@@ -92,3 +92,8 @@ models:
           True when pair_count >= 50 AND prr >= 2 — a substantiated candidate
           signal (disproportionate AND backed by enough reports). Low-count pairs
           keep their raw prr/pair_count but are not flagged.
+        data_tests:
+          # A boolean flag: only true/false are ever valid.
+          - accepted_values:
+              values: [true, false]
+              quote: false
