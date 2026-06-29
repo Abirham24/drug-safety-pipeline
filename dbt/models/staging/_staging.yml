@@ -31,6 +31,22 @@ models:
         data_tests:
           - not_null
 
+  - name: stg_drug_reaction_pairs
+    description: "Cleaned drug-reaction co-occurrence counts (one row per drug + reaction)."
+    columns:
+      - name: drug_name
+        description: "Drug name, trimmed and uppercased to match stg_drug_counts."
+        data_tests:
+          - not_null
+      - name: reaction
+        description: "Reaction (MedDRA preferred term) reported with the drug, trimmed."
+        data_tests:
+          - not_null
+      - name: pair_count
+        description: "Number of reports naming this reaction for this drug (integer)."
+        data_tests:
+          - not_null
+
   - name: stg_events
     description: "Cleaned top-level fields from the sample adverse-event records."
     columns:

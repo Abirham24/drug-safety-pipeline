@@ -137,6 +137,44 @@ def load_sample_events(
     print(f"  loaded {len(rows)} rows into {table}")
 
 
+def load_drug_reaction_pairs(
+    con: duckdb.DuckDBPyConnection,
+    filename: str,
+    table: str,
+) -> None:
+    """Load the drug-reaction co-occurrence pairs into ``table``.
+
+    This file is a plain JSON LIST of ``{drug, reaction, pair_count}`` records
+    (produced by fetch_drug_reaction_pairs.py) and can be large (~75k rows).
+
+    PERFORMANCE: instead of a Python row-by-row INSERT loop, we let DuckDB read
+    the JSON file natively with ``read_json_auto`` and build the table in a
+    single ``CREATE OR REPLACE TABLE ... AS SELECT``. DuckDB parses and bulk-loads
+    the whole array in one fast C++ operation, and CREATE OR REPLACE keeps the
+    load idempotent. We select explicit columns/types so the schema is stable
+    regardless of what read_json_auto infers.
+    """
+    print(f"\n[{table}]")
+    path = RAW_DIR / filename
+    if not path.exists():
+        print(f"  SKIP: raw file not found -> {path.relative_to(PROJECT_ROOT)}")
+        return
+
+    # Forward slashes so the path is a clean SQL string literal on Windows too.
+    # Parameterized to avoid any quoting issues with the path.
+    con.execute(
+        f"CREATE OR REPLACE TABLE {table} AS "
+        "SELECT "
+        "  CAST(drug AS VARCHAR)        AS drug, "
+        "  CAST(reaction AS VARCHAR)    AS reaction, "
+        "  CAST(pair_count AS BIGINT)   AS pair_count "
+        "FROM read_json_auto(?)",
+        [path.as_posix()],
+    )
+    count = con.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+    print(f"  loaded {count} rows into {table} (bulk read_json_auto)")
+
+
 def print_verification(con: duckdb.DuckDBPyConnection, table: str) -> None:
     """Print row count and the first few rows so the load can be eyeballed."""
     # If a raw file was missing the table won't exist — say so and move on.
@@ -176,6 +214,9 @@ def main() -> None:
             con, "counts_by_reaction.json", "raw_counts_by_reaction", "reaction"
         )
         load_sample_events(con, "sample_events.json", "raw_sample_events")
+        load_drug_reaction_pairs(
+            con, "drug_reaction_pairs.json", "raw_drug_reaction_pairs"
+        )
 
         print("\n" + "=" * 60)
         print("VERIFICATION SUMMARY")
@@ -184,6 +225,7 @@ def main() -> None:
             "raw_counts_by_drug",
             "raw_counts_by_reaction",
             "raw_sample_events",
+            "raw_drug_reaction_pairs",
         ):
             print_verification(con, table)
     finally:
