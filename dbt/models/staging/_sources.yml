@@ -22,3 +22,5 @@ sources:
         description: "Sample of detailed adverse-event records; full record kept as JSON."
       - name: raw_drug_reaction_pairs
         description: "Per-drug reaction co-occurrence counts (drug, reaction, pair_count)."
+      - name: raw_report_totals
+        description: "Single row: N, the total adverse-event reports in the ingestion window."

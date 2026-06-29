@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: int_pair_stats
+    description: >
+      Intermediate model: the 2x2 contingency components (a, b, c, d) for every
+      drug-reaction pair. Marginals come from openFDA's UNIQUE REPORT COUNTS —
+      a+c from stg_drug_counts, a+b from stg_reaction_counts, and N from
+      stg_report_totals — NOT from summing pair_count.
+
+      KNOWN DATA LIMITATION (and why we avoid summing pair_count): pair_count is
+      openFDA's per-drug reaction aggregation, where a single report can list
+      several reactions. So summing pair_count over a drug's reactions counts
+      reports multiple times and is NOT the drug's report total; using such sums
+      as the contingency marginals inflated PRR badly. We therefore take every
+      marginal from openFDA's report-level count endpoints, which count unique
+      reports and are mutually consistent over the same window.
+
+      SCOPE: a reaction's whole-DB background (a+b) is only known for reactions in
+      the ingested top-1000 reaction list; pairs whose reaction is outside it are
+      dropped (PRR needs a background frequency). All analyzed drugs are present.
+    columns:
+      - name: drug_name
+        description: "Drug name (trimmed, uppercased)."
+        data_tests:
+          - not_null
+      - name: reaction
+        description: "Reaction (MedDRA preferred term)."
+        data_tests:
+          - not_null
+      - name: a
+        description: "Reports for THIS drug WITH this reaction (= pair_count)."
+      - name: b
+        description: "Reports for all OTHER drugs WITH this reaction."
+      - name: c
+        description: "Reports for THIS drug WITHOUT this reaction."
+      - name: d
+        description: "Reports for all OTHER drugs WITHOUT this reaction."
+
+  - name: mart_drug_reaction_signals
+    description: >
+      Proportional Reporting Ratio (PRR) per drug-reaction pair, the project's
+      disproportionality signal table. One row per (drug, reaction), ranked with
+      the strongest candidate signals first.
+
+      INTERPRETATION & CAVEATS (read before acting on these numbers):
+        * PRR is a DISPROPORTIONALITY SIGNAL, NOT EVIDENCE OF CAUSATION. A high PRR
+          means a reaction is reported more often for this drug than for others in
+          the set; it does not mean the drug caused the reaction.
+        * PRR needs a MINIMUM COUNT to be meaningful. We only flag is_signal when
+          pair_count >= 50 AND prr >= 2. The count floor matters because PRR is a
+          ratio: on a low-count pair the denominator is also small, so one extra
+          report can swing PRR wildly (small-denominator / small-sample effect).
+          A high PRR backed by only a handful of reports is statistically fragile,
+          so we require enough report volume for a signal to count as substantiated.
+          Raw prr and pair_count stay on every row, so lower-count pairs remain
+          visible for inspection — they are just not flagged as is_signal.
+        * SOME HIGH-PRR PAIRS ARE EXPECTED. A drug's treated condition often shows
+          up as a "reaction" (indication/confounding by indication), as can known
+          label effects — these are not new safety findings.
+        * SCOPE LIMITATION: pair data covers the top ~75 drugs, and a reaction must
+          appear in the ingested top-1000 reaction list to have a known whole-DB
+          background — pairs whose reaction falls outside that list are excluded
+          because PRR cannot be computed without a background frequency. So this is
+          a screening view over the analyzed set, not a population-wide claim.
+        * DATA LIMITATION: pair_count is openFDA's per-drug reaction aggregation, in
+          which one report can contribute to multiple reactions. Summing it would
+          double-count reports, so all PRR marginals instead use openFDA's unique
+          report counts (per drug, per reaction, and the window total N). See
+          int_pair_stats.
+        * A 0.5 continuity correction (Haldane-Anscombe) is applied as a guard so
+          PRR is always defined; with report-count marginals its effect is negligible.
+    columns:
+      - name: drug_name
+        description: "Drug name (trimmed, uppercased)."
+        data_tests:
+          - not_null
+      - name: reaction
+        description: "Reaction reported with the drug (MedDRA preferred term)."
+        data_tests:
+          - not_null
+      - name: pair_count
+        description: "Reports naming this reaction for this drug (the 'a' cell)."
+      - name: prr
+        description: "Proportional Reporting Ratio (rounded to 2 dp); higher = more disproportionate."
+        data_tests:
+          - not_null
+          # PRR must never be negative — enforced by the singular test
+          # tests/assert_prr_non_negative.sql (no external packages needed).
+      - name: is_signal
+        description: >
+          True when pair_count >= 50 AND prr >= 2 — a substantiated candidate
+          signal (disproportionate AND backed by enough reports). Low-count pairs
+          keep their raw prr/pair_count but are not flagged.

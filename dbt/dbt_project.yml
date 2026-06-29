@@ -35,3 +35,7 @@ models:
   drug_safety:
     staging:
       +materialized: view
+    # Marts aggregate across the whole dataset, so we persist them as tables for
+    # fast querying rather than recomputing the window functions on every read.
+    marts:
+      +materialized: table

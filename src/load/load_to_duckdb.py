@@ -175,6 +175,37 @@ def load_drug_reaction_pairs(
     print(f"  loaded {count} rows into {table} (bulk read_json_auto)")
 
 
+def load_report_totals(
+    con: duckdb.DuckDBPyConnection,
+    filename: str,
+    table: str,
+) -> None:
+    """Load N — the total number of reports in the ingestion window — as one row.
+
+    Disproportionality (PRR) needs N = the total report count for the WHOLE
+    database window (a + b + c + d), not just the analyzed drugs. openFDA returns
+    it on every search response under ``meta.results.total``; the Stage 1
+    sample_events fetch used the bare receivedate window, so ITS
+    ``meta.results.total`` is exactly that N. We capture it here as a tiny one-row
+    table so the dbt PRR model can reference it. CREATE OR REPLACE keeps it
+    idempotent like the other loads.
+    """
+    print(f"\n[{table}]")
+    path = RAW_DIR / filename
+    if not path.exists():
+        print(f"  SKIP: raw file not found -> {path.relative_to(PROJECT_ROOT)}")
+        return
+
+    with path.open("r", encoding="utf-8") as fh:
+        meta = json.load(fh).get("meta", {})
+    total = meta.get("results", {}).get("total")
+
+    con.execute(f"CREATE OR REPLACE TABLE {table} (total_reports BIGINT)")
+    if total is not None:
+        con.execute(f"INSERT INTO {table} VALUES (?)", [total])
+    print(f"  loaded total_reports = {total} into {table}")
+
+
 def print_verification(con: duckdb.DuckDBPyConnection, table: str) -> None:
     """Print row count and the first few rows so the load can be eyeballed."""
     # If a raw file was missing the table won't exist — say so and move on.
@@ -217,6 +248,7 @@ def main() -> None:
         load_drug_reaction_pairs(
             con, "drug_reaction_pairs.json", "raw_drug_reaction_pairs"
         )
+        load_report_totals(con, "sample_events.json", "raw_report_totals")
 
         print("\n" + "=" * 60)
         print("VERIFICATION SUMMARY")
@@ -226,6 +258,7 @@ def main() -> None:
             "raw_counts_by_reaction",
             "raw_sample_events",
             "raw_drug_reaction_pairs",
+            "raw_report_totals",
         ):
             print_verification(con, table)
     finally:

@@ -47,6 +47,14 @@ models:
         data_tests:
           - not_null
 
+  - name: stg_report_totals
+    description: "Single-row N: total adverse-event reports in the window (PRR denominator base)."
+    columns:
+      - name: total_reports
+        description: "Total reports over the ingestion window (openFDA meta.results.total)."
+        data_tests:
+          - not_null
+
   - name: stg_events
     description: "Cleaned top-level fields from the sample adverse-event records."
     columns:
